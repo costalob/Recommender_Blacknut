@@ -34,6 +34,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Random;
 
@@ -78,6 +79,9 @@ public class Evaluator {
 	private static Logger logger = LoggerFactory.getLogger(Evaluator.class);
 
 	public static void main(String[] args) throws IOException {
+		
+		Locale locale = new Locale("en_US"); 
+		Locale.setDefault(locale);
 
 		String cfgFileName = prefix + "default_config.yml";
 
@@ -266,7 +270,9 @@ public class Evaluator {
 			Object obj = jsonParser.parse(reader);
 			DateFormat format = new SimpleDateFormat("dd_MM_yyyy");
 
-			Date today = new Date();
+			// changing the date just for testing
+			//Date today = new Date();
+			Date today = format.parse("10_08_2020");
 			Date tmpDate = null;
  
 			String endDateString = (String) ((JSONObject)obj).get("end_date");
@@ -317,7 +323,10 @@ public class Evaluator {
 		try {
 			logger.info("Starting recommendations");
 
-			JSONArray users = new JSONArray();
+			JSONObject results= new JSONObject();
+			JSONArray users = new JSONArray(); 
+			JSONArray reco = new JSONArray();
+			
 			FileWriter f;
 			LongPrimitiveIterator it_user = model.getUserIDs();
 			int numUser = model.getNumUsers();
@@ -327,52 +336,84 @@ public class Evaluator {
 			}
 			int fileNb = 1;
 			int index = 0;
+			
+			
 
 			while (it_user.hasNext()) {
+				
 				long id = it_user.next();
 
+				
+				
+				
 				if (cfg.getNbUserPerFile() > 0 && cfg.getNbUserPerFile() == index) {
+					
 					String str = cfg.getResultPath();
 					f = new FileWriter(str.substring(0, str.length() - 5) + fileNb + "_" + nbFile + ".json");
-					f.write(users.toJSONString());
+					f.write(results.toJSONString());
 					f.flush();
 					f.close();
+					reco=new JSONArray();
 					users = new JSONArray();
+					results= new JSONObject();
 					fileNb++;
 					index=0;
 				}
 
 				JSONObject user = new JSONObject();
+				
+			
+				reco= new JSONArray();
+				
+				
 				user.put("user_id", g.getOldUserId((int) id));
+				
 				Iterator<Entry<String, AbstractConfig>> it = configs.entrySet().iterator();
+			
 				while (it.hasNext()) {
 					Entry<String, AbstractConfig> pair = it.next();
 					AbstractConfig c = (AbstractConfig) pair.getValue();
 					// c.logConfig(logcfg);
+					
 					String name = pair.getKey();
 
 					RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
 					List<RecommendedItem> itemRecommendations = builder.buildRecommender(model).recommend(id,
 							cfg.getNbRecommendation());
-					JsonArray reco = new JsonArray();
+					JSONObject element_of_reco = new JSONObject();
+					JsonArray game_ids = new JsonArray();
+					
 					for (RecommendedItem itemRecommendation : itemRecommendations) {
 						String idGame = g.getOldGameId((int) itemRecommendation.getItemID());
 						if(cfg.getData().equals("local") || games.contains(idGame)){
-							reco.add(idGame);
+							game_ids.add(idGame);
+							
 						}
 					}
-
-					user.put(name, reco);
+					
+					
+					
+					element_of_reco.put("algo_name", name);
+					element_of_reco.put("game_ids", game_ids);
+					reco.add(element_of_reco);
+					
 				}
+				
+				
+
+				
+				
 				JSONArray algos = (JSONArray) currentTest.get("algos");
 				
 				Random rand = new Random();
 				int i = rand.nextInt(algos.size());
 
+				
 				user.put("display", (String) algos.get(i));
-
 				user.put("test_id", currentTest.get("id"));
+				user.put("recommendations", reco);
 				users.add(user);
+				results.put("results ",users);
 				index++;
 
 			}
@@ -384,7 +425,8 @@ public class Evaluator {
 				System.exit(1);
 				return;
 			}
-			f.write(users.toJSONString());
+			
+			f.write(results.toJSONString());
 			f.flush();
 			f.close();
 

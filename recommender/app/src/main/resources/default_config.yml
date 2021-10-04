@@ -1,6 +1,6 @@
 data: local
 dataset: src/main/resources/streams.csv
-resultPath: result/result.json
+resultPath: src/main/resources/results/result.json
 keyPath: blacknut-analytics-7488e0e6d73d.json
 testPath: tests.json
 nbUserPerFile: 10
