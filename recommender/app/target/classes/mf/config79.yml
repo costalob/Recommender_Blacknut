@@ -1,4 +1,0 @@
-factorizer: sgd
-nbfeatures: 18
-lambda: 0
-nbiterations: 25
