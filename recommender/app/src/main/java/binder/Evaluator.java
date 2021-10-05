@@ -33,8 +33,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
@@ -323,6 +325,7 @@ public class Evaluator {
 		try {
 			logger.info("Starting recommendations");
 
+			
 			JSONObject results= new JSONObject();
 			JSONArray users = new JSONArray(); 
 			JSONArray reco = new JSONArray();
@@ -393,8 +396,9 @@ public class Evaluator {
 					
 					
 					
-					element_of_reco.put("algo_name", name);
+					
 					element_of_reco.put("game_ids", game_ids);
+					element_of_reco.put("algorithm_name", name);
 					reco.add(element_of_reco);
 					
 				}
