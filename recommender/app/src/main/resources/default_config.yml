@@ -1,15 +1,22 @@
 data: local
 dataset: src/main/resources/streams.csv
 resultPath: src/main/resources/results/result.json
-keyPath: blacknut-analytics-7488e0e6d73d.json
+keyPath: src/main/resources/blacknut-analytics-7488e0e6d73d.json
 testPath: tests.json
-nbUserPerFile: 10
-nbRecommendation: 5
+nbUserPerFile: 10000
+nbRecommendation: 10
 configs:
-- mf/config79.yml
-- ibknn/config0.yml
-- ibknn/config2.yml
 - itemavg
-- itemuseravg
+- random
+- mf/config79.yml
 normalize: false
 binarize: false
+nruns: 1
+threshold: 3
+r: 10
+folds: 5
+strategies:
+- allitems
+doIREval: false
+doTimeEval: false
+doPredEval: false

@@ -99,6 +99,18 @@ public class BinderRecommenderBuilder implements RecommenderBuilder {
 		this.threshold = 0.0f;
 	}
 	
+	public BinderRecommenderBuilder(BBCFConfig cc, String strategy2, char[] threshold2) {
+		this.strategy = "";
+		this.threshold = 0;
+		// TODO Auto-generated constructor stub
+	}
+
+	public BinderRecommenderBuilder(AbstractConfig c, String strategy2, char[] threshold2) {
+		this.strategy = "";
+		this.threshold = 0;
+		// TODO Auto-generated constructor stub
+	}
+
 	public Recommender buildRecommender(DataModel dataModel, Fold fold) throws TasteException {
 		CandidateItemsStrategy s = null;
 		if (this.strategy.equals("testratings")) {
@@ -179,6 +191,7 @@ public class BinderRecommenderBuilder implements RecommenderBuilder {
 			
 		} else if (this.config instanceof MFConfig) { /* Matrix Factorization */
 			MFConfig cfg = (MFConfig) this.config;
+			
 			
 			/* Factorizer algorithm choice */
 			Factorizer fact = null;

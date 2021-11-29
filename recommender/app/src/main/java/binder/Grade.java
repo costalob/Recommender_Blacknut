@@ -271,6 +271,7 @@ public class Grade {
                             + session.getPreferenceValue(id_user, id_game)) / 2)));
                     index++;
                 }
+                
                 grades.put(id_user, pref);
             }
         } catch (TasteException e) {
@@ -336,11 +337,13 @@ public class Grade {
             for (String game : tmp.keySet()) {
                 ArrayList<Integer> g = tmp.get(game);
                 int v = g.size();
-
+                
+       
                 total_time.put(game, v);
 
                 if (v > max) {
                     max = v;
+                    
                 }
             }
             PreferenceArray pref = new GenericUserPreferenceArray(tmp.size());
@@ -351,6 +354,7 @@ public class Grade {
             int index = 0;
             for (String game : total_time.keySet()) {
                 ArrayList<Integer> sessions = tmp.get(game);
+              
                 boolean notZero = false;
                 for (int session : sessions) {
                     if (session > 0) {
@@ -361,9 +365,11 @@ public class Grade {
                     continue;
                 }
                 float sessionTime = (float) total_time.get(game);
+            
                 if (sessionTime > 0.0f) {
                     pref.setItemID(index, IdConvert.getNewGameId(game));
                     pref.setValue(index, Float.parseFloat(df.format(10.0f * (sessionTime / (float) max))));
+                   
                     index++;
                 }
             }

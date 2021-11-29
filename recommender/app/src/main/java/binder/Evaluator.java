@@ -16,6 +16,7 @@
 
 package binder;
 
+
 import binder.config.*;
 
 import java.io.InputStream;
@@ -39,6 +40,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.io.File;
+
 
 import org.yaml.snakeyaml.Yaml;
 
@@ -47,8 +50,25 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
+import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.impl.common.DataPreprocessing;
+import org.apache.mahout.cf.taste.impl.common.FullRunningAverage;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
+import org.apache.mahout.cf.taste.impl.common.RunningAverage;
+import org.apache.mahout.cf.taste.impl.recommender.AdaptativeCOCLUSTRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.BBCFRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.BCNRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.BicaiNetRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.COCLUSTRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.GenericUserBasedRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.ItemAverageRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.ItemUserAverageRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.NBCFRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.RandomRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
+import org.apache.mahout.cf.taste.common.NoSuchItemException;
+import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.json.simple.JSONArray;
@@ -73,14 +93,31 @@ import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
 import com.google.gson.JsonArray;
 
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.*;
+
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class Evaluator {
 
 	static String prefix = "src/main/resources/";
 	private static Logger logger = LoggerFactory.getLogger(Evaluator.class);
+	private static RandomRecommender random;
+	private static GenericUserBasedRecommender ubknn;
+	private static ItemAverageRecommender itemavg;
+	private static SVDRecommender mf;
+	private static ItemUserAverageRecommender itemuseravg;
+	private static GenericItemBasedRecommender ibknn;
+	private static COCLUSTRecommender coclust;
+	private static COCLUSTRecommender coclustr;
+	private static NBCFRecommender nbcf;
+	private static BBCFRecommender bbcf;
+	private static BicaiNetRecommender bicainet;
+	private static BCNRecommender bcn;
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, TasteException, org.json.simple.parser.ParseException {
 		
 		Locale locale = new Locale("en_US"); 
 		Locale.setDefault(locale);
@@ -138,18 +175,24 @@ public class Evaluator {
 
 			GoogleCredentials credentials;
 			try (FileInputStream serviceAccountStream = new FileInputStream(credentialsPath)) {
+				
 				credentials = ServiceAccountCredentials.fromStream(serviceAccountStream);
+				
 			}
 
 			// Instantiate a client.
 
 			BigQuery bigquery = BigQueryOptions.newBuilder().setCredentials(credentials).setProjectId(projectId).build()
 					.getService();
+			
+			System.out.println("loading.....");
 
 			QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder("SELECT * from external_share.streams")
 					.setUseLegacySql(false).build();
 			QueryJobConfiguration queryConfigGames = QueryJobConfiguration.newBuilder("SELECT * from external_share.games")
 					.setUseLegacySql(false).build();
+			
+			System.out.println("wait...");
 
 			JobId jobId = JobId.of(UUID.randomUUID().toString());
 			JobId jobIdGames = JobId.of(UUID.randomUUID().toString());
@@ -193,6 +236,8 @@ public class Evaluator {
 
 		DataModel model = null;
 		model = g.NumberOfSession();
+		System.out.println(model.getNumItems());
+		
 
 		if (cfg.getNormalize()) {
 			try {
@@ -216,7 +261,7 @@ public class Evaluator {
 		}
 		logger.info("Done with dataset");
 
-		/* Read configuration files of all recommender algorithms specified */
+		/* Read configuration files of all recommender algorithms specified and train the model */
 
 		HashMap<String, AbstractConfig> configs = new HashMap<String, AbstractConfig>(cfg.getConfigs().size());
 		for (String s : cfg.getConfigs()) {
@@ -224,30 +269,75 @@ public class Evaluator {
 			Yaml yml = new Yaml();
 			if (s.equals("random")) {
 				c = new RandomConfig();
+				RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+				random = (RandomRecommender) builder.buildRecommender(model);
+				//runTimeEval(builder,model,c,"random",cfg);
+				
 			} else if (s.equals("itemavg")) {
 				c = new ItemAvgConfig();
+				RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+				itemavg = (ItemAverageRecommender) builder.buildRecommender(model);
+				//runTimeEval(builder,model,c,"itemavg",cfg);
+				
 			} else if (s.equals("itemuseravg")) {
 				c = new ItemUserAvgConfig();
+				RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+				itemuseravg = (ItemUserAverageRecommender) builder.buildRecommender(model);
+				//runTimeEval(builder,model,c,"itemuseravg",cfg);
+				
 			} else {
 				try (InputStream in = Files.newInputStream(Paths.get(prefix + s))) {
 					if (s.contains("ubknn")) {
 						c = yml.loadAs(in, UBKNNConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						ubknn = (GenericUserBasedRecommender) builder.buildRecommender(model);
+						//runTimeEval(builder,model,c,"ubknn",cfg);
+						
 					} else if (s.contains("ibknn")) {
+					
 						c = yml.loadAs(in, IBKNNConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						ibknn = (GenericItemBasedRecommender) builder.buildRecommender(model);
+						//runTimeEval(builder,model,c,"ibknn",cfg);
+						
 					} else if (s.contains("mf")) {
 						c = yml.loadAs(in, MFConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						mf = (SVDRecommender) builder.buildRecommender(model);
+						//runTimeEval(builder,model,c,"mf",cfg);
 					} else if (s.contains("coclustr")) {
 						c = yml.loadAs(in, COCLUSTRConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						coclustr = (COCLUSTRecommender)builder.buildRecommender(model);
 					} else if (s.contains("coclust")) {
 						c = yml.loadAs(in, COCLUSTConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						coclust = (COCLUSTRecommender)builder.buildRecommender(model);
+						//runTimeEval(builder,model,c,"coclust",cfg);
+						
 					} else if (s.contains("nbcf")) {
 						c = yml.loadAs(in, NBCFConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						nbcf = (NBCFRecommender)builder.buildRecommender(model);
+						//runTimeEval(builder,model,c,"nbcf",cfg);
+						
 					} else if (s.contains("bbcf")) {
 						c = yml.loadAs(in, BBCFConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						bbcf = (BBCFRecommender)builder.buildRecommender(model);
+						//runTimeEval(builder,model,c,"bbcf",cfg);
+						
 					} else if (s.contains("bicainet")) {
 						c = yml.loadAs(in, BicaiNetConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						//bicainet =(BicaiNetRecommender)builder.buildRecommender(model);
+						
+						
 					} else if (s.contains("bcn")) {
 						c = yml.loadAs(in, BCNConfig.class);
+						RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
+						bcn =(BCNRecommender)builder.buildRecommender(model);
+						
 					} else {
 						logger.error("Unrecognized algorithm");
 						System.exit(1);
@@ -260,10 +350,25 @@ public class Evaluator {
 			}
 			configs.put(s, c);
 		}
+		
+		//AssignAlgo
+	
+			
+	         File file = new File(prefix+"user_algo.json");
+	         if (!file.exists()) {
+	        	 
+	        	 assignAlgoToUser(model,g,cfg.getConfigs());
+	        	 
+	         }
+	         
+		
+		
+		///// 
 
-		/* Read configuration files of all tests specified */
+		/* Read configuration files of all tests specified,
+		 * 13/11/2021 it don't know what it does it might be removed */
 
-		JSONParser jsonParser = new JSONParser();
+		/*JSONParser jsonParser = new JSONParser();
 		JSONObject currentTest = null;
          
         try (FileReader reader = new FileReader(cfg.getTestPath()))
@@ -318,10 +423,11 @@ public class Evaluator {
 		} catch (java.text.ParseException e) {
 			e.printStackTrace();
 			System.exit(1);
-		}
+		}*/
 
 		/* Recommendations */
-
+	    Object obj = new JSONParser().parse(new FileReader(prefix+"user_algo.json"));
+        
 		try {
 			logger.info("Starting recommendations");
 
@@ -347,8 +453,6 @@ public class Evaluator {
 				long id = it_user.next();
 
 				
-				
-				
 				if (cfg.getNbUserPerFile() > 0 && cfg.getNbUserPerFile() == index) {
 					
 					String str = cfg.getResultPath();
@@ -368,8 +472,8 @@ public class Evaluator {
 			
 				reco= new JSONArray();
 				
-				
-				user.put("user_id", g.getOldUserId((int) id));
+				String id_old = g.getOldUserId((int) id);
+				user.put("user_id", id_old);
 				
 				Iterator<Entry<String, AbstractConfig>> it = configs.entrySet().iterator();
 			
@@ -379,12 +483,53 @@ public class Evaluator {
 					// c.logConfig(logcfg);
 					
 					String name = pair.getKey();
-
-					RecommenderBuilder builder = new BinderRecommenderBuilder(c, 3.0f);
-					List<RecommendedItem> itemRecommendations = builder.buildRecommender(model).recommend(id,
-							cfg.getNbRecommendation());
+					//System.out.println(name);
+					
+					List<RecommendedItem> itemRecommendations = null;
+					
+					if(name.equals("random")) {
+						itemRecommendations = random.recommend(id, 5);
+					}
+					else if(name.contains("ubknn")) {
+						itemRecommendations = ubknn.recommend(id, 5);
+					}
+					else if (name.equals("itemavg")) {
+						itemRecommendations = itemavg.recommend(id, 5);
+					}
+					else if (name.contains("mf")) {
+						itemRecommendations = mf.recommend(id, 5);
+					}
+					else if (name.contains("itemuseravg")) {
+						itemRecommendations = itemuseravg.recommend(id, 5);
+					}
+					else if (name.contains("ibknn")) {
+						itemRecommendations = ibknn.recommend(id, 5);
+						
+					}else if (name.contains("coclust")) {
+						itemRecommendations = ((Recommender) coclust).recommend(id, 5);
+					}
+					else if (name.contains("nbcf")) {
+						itemRecommendations = nbcf.recommend(id,5);	
+					}
+					else if (name.contains("bbcf")) {
+						itemRecommendations = bbcf.recommend(id, 5);
+					}
+					else if (name.contains("bicainet")) {
+						itemRecommendations = bicainet.recommend(id, 5);
+					}
+					else if(name.contains("bcn")) {
+						itemRecommendations = bcn.recommend(id, 5);
+					}
+					else if (name.contains("coclustr")) {
+						itemRecommendations = ((Recommender) coclustr).recommend(id, 5);
+					}
+					
+		
+					
+					
 					JSONObject element_of_reco = new JSONObject();
 					JsonArray game_ids = new JsonArray();
+					
 					
 					for (RecommendedItem itemRecommendation : itemRecommendations) {
 						String idGame = g.getOldGameId((int) itemRecommendation.getItemID());
@@ -393,31 +538,30 @@ public class Evaluator {
 							
 						}
 					}
-					
-					
-					
-					
+						
 					element_of_reco.put("game_ids", game_ids);
 					element_of_reco.put("algorithm_name", name);
 					reco.add(element_of_reco);
 					
 				}
 				
+				// todo how to assign the algorithm to a right person, what to display? 
 				
-
-				
-				
-				JSONArray algos = (JSONArray) currentTest.get("algos");
-				
+				// call get algo to show function
+		
+				/*JSONArray algos = (JSONArray) currentTest.get("algos");
 				Random rand = new Random();
-				int i = rand.nextInt(algos.size());
+				int i = rand.nextInt(algos.size());*/
 
-				
-				user.put("display", (String) algos.get(i));
-				user.put("test_id", currentTest.get("id"));
+				String algo = getAlgotoDisplay(id_old,obj);
+				if (algo == null) {
+					
+					assignNewUser(id_old,cfg.getConfigs());
+				}
+				user.put("display", algo);
 				user.put("recommendations", reco);
 				users.add(user);
-				results.put("results ",users);
+				results.put("results",users);
 				index++;
 
 			}
@@ -435,6 +579,8 @@ public class Evaluator {
 			f.close();
 
 			logger.info("Recommendations finished");
+			
+			
 
 		} catch (TasteException e) {
 			e.printStackTrace();
@@ -445,5 +591,160 @@ public class Evaluator {
 		System.exit(0);
 
 	}
+	static class TimeFunc {
+		static long call() {
+			return System.nanoTime();
+//	    	return System.currentTimeMillis();
+		}
+	}
+	
+	
+	private static void runTimeEval(RecommenderBuilder builder, DataModel model, AbstractConfig c, String name, Config cfg) throws TasteException, IOException {
+		RunningAverage trainTime = new FullRunningAverage();
+		RunningAverage predPerUserTime = new FullRunningAverage();
+		long t1,t2;
+		
+		t1 = TimeFunc.call();
+		Recommender recommender = builder.buildRecommender(model);
+		t2 = TimeFunc.call();
+		trainTime.addDatum((t2 - t1)/1000000000);
+		
+		LongPrimitiveIterator it = model.getUserIDs();
+		int cnt = 0;
+		double sum = 0.0;
+		while(it.hasNext()) {
+			
+			long userID = it.nextLong();
+			
+			try {
+				t1 = TimeFunc.call();
+				recommender.recommend(userID, 5);
+				t2 = TimeFunc.call();
+				sum += t2 - t1;
+				cnt++;
+			} catch (NoSuchUserException nsue) {
+				continue;
+			} catch (NoSuchItemException nsie) {
+				continue;
+			}
+			
+		}
+		predPerUserTime.addDatum((sum / (double) cnt)/1000000);
+		String str = "src/main/resources/timeResult/result.json";
+		FileWriter f = new FileWriter(str.substring(0, str.length() - 5) + name + ".txt");
+		f.write("algo name: "+ name);
+		f.write("\n");
+		f.write("this is the training time in seconds : "+ trainTime.toString());
+		f.write("\n");
+		f.write("avg prediction time per user in milliseconds : "+ predPerUserTime.toString());
+		f.flush();
+		f.close();
+		logger.info("done time evuation");
+		
+		
+	}
+	
+	// this method is called when there is no assigner file on the disk
+	
+	
+	public static void assignAlgoToUser(DataModel model, Grade g,List<String> configs) throws TasteException, IOException {
+		
+		FileWriter f = new FileWriter(prefix+"user_algo.json");
+		LongPrimitiveIterator it_user = model.getUserIDs();
+		JSONObject results= new JSONObject();
+		JSONArray users = new JSONArray(); 
+		
+		while (it_user.hasNext()) {
+			Random rand = new Random();
+			int i = rand.nextInt(configs.size());
+			String algo = configs.get(i);
+			long id = it_user.next();
+			results.put(g.getOldUserId((int) id),algo);
+		}
+		
+		
+		f.write(results.toJSONString());
+		f.flush();
+		f.close();
+		
+		
+	}
+	
+	private static String cleaner(String name) {
+		
+		
+		if(name.equals("random")) {
+			return "random";
+		}
+		else if(name.contains("ubknn")) {
+			return "ubknn";
+		}
+		else if (name.equals("itemavg")) {
+			return "itemavg";
+		}
+		else if (name.contains("mf")) {
+			return "mf";	
+		}
+		else if (name.contains("itemuseravg")) {
+			return "itemuseravg";
+		}
+		else if (name.contains("ibknn")) {
+			return "ibknn";
+			
+		}else if (name.contains("coclust")) {
+			return "coclust";
+		}
+		else if (name.contains("nbcf")) {
+			return "nbcf";
+		}
+		else if (name.contains("bbcf")) {
+			return "bbcf";
+		}
+		else if (name.contains("bicainet")) {
+			return "bicainet";
+		}
+		else if(name.contains("bcn")) {
+			return "bcn";
+		}
+		else if (name.contains("coclustr")) {
+			return "coclustr";
+		}
+		
+		return "empty";
+		
+		
+		
+	}
+	
+     
+	
+	private static String getAlgotoDisplay(String username, Object obj) throws FileNotFoundException, IOException, org.json.simple.parser.ParseException {
+		
+		
+		//Object obj = new JSONParser().parse(new FileReader(prefix+"user_algo.json"));
+        JSONObject jo = (JSONObject) obj;
+        return (String) jo.get(username);
+    
+	}
+	
+	
+	// this function takes a long time but I don't know how to improve it
+	private static void assignNewUser(String id_old,List<String> configs) throws FileNotFoundException, IOException, org.json.simple.parser.ParseException {
+		
+		
+		JSONObject obj =(JSONObject) new JSONParser().parse(new FileReader(prefix+"user_algo.json"));
+		Random rand = new Random();
+		int i = rand.nextInt(configs.size());
+		String algo = configs.get(i);
+		obj.put(id_old,algo);
+		FileWriter file = new FileWriter(prefix+"user_algo.json");
+        file.write(obj.toJSONString());
+        file.flush();
+		
+		
+	}
+	
+	
+	
 
 }

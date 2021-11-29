@@ -1,4 +1,4 @@
 factorizer: svd++
-nbfeatures: 13
+nbfeatures: 1
 lambda: 0
-nbiterations: 25
+nbiterations: 2

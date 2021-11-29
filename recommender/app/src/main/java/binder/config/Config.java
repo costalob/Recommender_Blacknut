@@ -15,6 +15,7 @@
 */
 package binder.config;
 
+import org.apache.mahout.cf.taste.eval.FoldDataSplitter;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -31,7 +32,19 @@ public class Config implements AbstractConfig {
 	private List<String> configs;
 	private boolean normalize; /* Normalize dataset by subtracting user mean rating */
 	private boolean binarize; /* Binarize ratings into 0 or 1 */
-
+	private int folds; 
+	private boolean doIREval; /* Run IRStats evaluation */
+	private List<String> strategies; /* Strategy for candidate item selection */
+	private int r; /*
+	 * Max number of recommendations for precision@r and recall@r, will go from 5 to
+	 * r with step 5
+	 */
+	private boolean oneR; /* Run eval with only one r instead of iterations */
+	private float threshold; /* Like-threshold for ratings */
+	private int nbruns; /* Number of runs for each evaluation */
+	private boolean doTimeEval; /* Run the time performance evaluation */
+	private boolean doPerUserEval; /* Run pred and irstats per user evaluation */
+	private boolean doPredEval; /* Run RMSE and MAE evaluation */
 
 	public void setData(String s) {
 		this.data = s;
@@ -112,6 +125,94 @@ public class Config implements AbstractConfig {
 	public boolean getBinarize() {
 		return this.binarize;
 	}
+	
+	public void setFolds(int n){
+		this.folds=n;
+	}
+	
+	public int getFolds() {
+		
+		return this.folds;
+	}
+
+	public boolean getFilterBBCF() {
+		
+		return false;
+	}
+	
+	public void setStrategies(List<String> l) {
+		this.strategies = l;
+	}
+
+	public List<String> getStrategies() {
+		
+		return this.strategies;
+	}
+
+	
+	
+	public void setDoIREval(boolean b) {
+		this.doIREval = b;
+	}
+
+
+	public boolean getDoIREval() {
+		return this.doIREval;
+	}
+
+	public float getThreshold() {
+		// TODO Auto-generated method stub
+		return this.threshold;
+	}
+	
+	public void setThreshold(float t) {
+		
+		this.threshold=t;
+	}
+
+	
+
+	public boolean getDoPerUserEval() {
+		return false;
+	}
+	
+	public void setNruns(int n) {
+		this.nbruns=n;
+	}
+
+	public int getNruns() {
+		return this.nbruns;
+	}
+	
+	public void setR(int r) {
+		this.r=r;
+	}
+
+	public int getR() {
+		return this.r;
+	}
+
+	public boolean getOneR() {
+		return this.oneR;
+	}
+	
+	public void setDoTimeEval(boolean b) {
+		this.doTimeEval = b;
+	}
+	
+	public boolean getDoTimeEvel() {
+		return this.doTimeEval;
+	}
+	
+	public void setDoPredEval(boolean b) {
+		this.doPredEval = b;
+	}
+
+	public boolean getDoPredEval() {
+		return this.doPredEval;
+	}
+	
+	
 
 	@Override
 	public void logConfig(Logger logger) {
@@ -127,5 +228,7 @@ public class Config implements AbstractConfig {
 		logger.info("Normalize: {}", this.normalize);
 		logger.info("Binarize: {}", this.binarize);
 	}
+
+	
 
 }
