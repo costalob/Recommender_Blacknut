@@ -3,20 +3,20 @@ dataset: src/main/resources/streams.csv
 resultPath: src/main/resources/results/result.json
 keyPath: src/main/resources/blacknut-analytics-7488e0e6d73d.json
 testPath: tests.json
-nbUserPerFile: 10000
+nbUserPerFile: 1000
 nbRecommendation: 10
 configs:
-- itemavg
 - random
-- mf/config79.yml
+- itemavg
+- ubknn/config0.yml
 normalize: false
 binarize: false
 nruns: 1
 threshold: 3
-r: 10
+r: 5
 folds: 5
 strategies:
-- allitems
-doIREval: false
+- trainingitems
+doIREval: true
 doTimeEval: false
-doPredEval: false
+doPredEval: true

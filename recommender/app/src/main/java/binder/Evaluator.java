@@ -45,8 +45,11 @@ import java.io.File;
 
 import org.yaml.snakeyaml.Yaml;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+
 
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
@@ -103,7 +106,8 @@ import java.util.concurrent.TimeUnit;
 public class Evaluator {
 
 	static String prefix = "src/main/resources/";
-	private static Logger logger = LoggerFactory.getLogger(Evaluator.class);
+	//private static Logger logger = LoggerFactory.getLogger(Evaluator.class);
+	private static final Logger logger = LogManager.getLogger(Evaluator.class);
 	private static RandomRecommender random;
 	private static GenericUserBasedRecommender ubknn;
 	private static ItemAverageRecommender itemavg;
@@ -439,6 +443,7 @@ public class Evaluator {
 			FileWriter f;
 			LongPrimitiveIterator it_user = model.getUserIDs();
 			int numUser = model.getNumUsers();
+			int numRec = cfg.getNbRecommendation();
 			int nbFile = 0;
 			if(cfg.getNbUserPerFile() != 0){
 				nbFile = numUser/cfg.getNbUserPerFile() + 1;
@@ -488,40 +493,40 @@ public class Evaluator {
 					List<RecommendedItem> itemRecommendations = null;
 					
 					if(name.equals("random")) {
-						itemRecommendations = random.recommend(id, 5);
+						itemRecommendations = random.recommend(id,numRec );
 					}
 					else if(name.contains("ubknn")) {
-						itemRecommendations = ubknn.recommend(id, 5);
+						itemRecommendations = ubknn.recommend(id, numRec);
 					}
 					else if (name.equals("itemavg")) {
-						itemRecommendations = itemavg.recommend(id, 5);
+						itemRecommendations = itemavg.recommend(id, numRec);
 					}
 					else if (name.contains("mf")) {
-						itemRecommendations = mf.recommend(id, 5);
+						itemRecommendations = mf.recommend(id, numRec);
 					}
 					else if (name.contains("itemuseravg")) {
-						itemRecommendations = itemuseravg.recommend(id, 5);
+						itemRecommendations = itemuseravg.recommend(id, numRec);
 					}
 					else if (name.contains("ibknn")) {
-						itemRecommendations = ibknn.recommend(id, 5);
+						itemRecommendations = ibknn.recommend(id, numRec);
 						
 					}else if (name.contains("coclust")) {
-						itemRecommendations = ((Recommender) coclust).recommend(id, 5);
+						itemRecommendations = ((Recommender) coclust).recommend(id, numRec);
 					}
 					else if (name.contains("nbcf")) {
-						itemRecommendations = nbcf.recommend(id,5);	
+						itemRecommendations = nbcf.recommend(id,numRec);	
 					}
 					else if (name.contains("bbcf")) {
-						itemRecommendations = bbcf.recommend(id, 5);
+						itemRecommendations = bbcf.recommend(id, numRec);
 					}
 					else if (name.contains("bicainet")) {
-						itemRecommendations = bicainet.recommend(id, 5);
+						itemRecommendations = bicainet.recommend(id, numRec);
 					}
 					else if(name.contains("bcn")) {
-						itemRecommendations = bcn.recommend(id, 5);
+						itemRecommendations = bcn.recommend(id, numRec);
 					}
 					else if (name.contains("coclustr")) {
-						itemRecommendations = ((Recommender) coclustr).recommend(id, 5);
+						itemRecommendations = ((Recommender) coclustr).recommend(id, numRec);
 					}
 					
 		

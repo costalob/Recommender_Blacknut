@@ -1,4 +1,4 @@
 factorizer: sgd
-nbfeatures: 18
-lambda: 0
+nbfeatures: 9
+lambda: 0.234
 nbiterations: 25

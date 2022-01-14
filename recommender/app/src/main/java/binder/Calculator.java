@@ -36,8 +36,8 @@ import org.apache.mahout.cf.taste.impl.eval.KFoldRecommenderPerUserEvaluator;
 import org.apache.mahout.cf.taste.impl.eval.KFoldRecommenderPredictionEvaluator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.Recommender;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
 import com.google.api.services.bigquery.Bigquery.Datasets.List;
@@ -70,13 +70,13 @@ import binder.config.UBKNNConfig;
 
 public class Calculator {
 	
-	private static Logger logcfg = LoggerFactory.getLogger("Config");
-	private static Logger logr = LoggerFactory.getLogger("Pred");
-	private static Logger logt = LoggerFactory.getLogger("Time");
+	private static Logger logcfg = LogManager.getLogger("Config");
+	private static Logger logr = LogManager.getLogger("Pred");
+	private static Logger logt = LogManager.getLogger("Time");
 
-	private static Logger logir = LoggerFactory.getLogger("IRStats");
+	private static Logger logir = LogManager.getLogger("IRStats");
 	static String prefix = "src/main/resources/";
-	private static Logger logger = LoggerFactory.getLogger(Calculator.class);
+	private static Logger logger = LogManager.getLogger(Calculator.class);
 	
 	public static void main(String[] args)throws IOException, TasteException{
 		
@@ -196,7 +196,7 @@ public class Calculator {
 		}
 
 		DataModel model = null;
-		model = g.NumberOfSession();
+		model = g.AverageGameDuration();
 		
 
 		if (cfg.getNormalize()) {

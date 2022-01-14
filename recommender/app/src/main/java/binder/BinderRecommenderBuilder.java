@@ -17,8 +17,8 @@ package binder;
 
 import binder.config.*;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,7 +77,7 @@ import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
 public class BinderRecommenderBuilder implements RecommenderBuilder {
 	
 	private AbstractConfig config;
-	private static Logger logger = LoggerFactory.getLogger(BinderRecommenderBuilder.class);
+	private static Logger logger = LogManager.getLogger(BinderRecommenderBuilder.class);
 	private final String strategy;
 	private final float threshold;
 	
